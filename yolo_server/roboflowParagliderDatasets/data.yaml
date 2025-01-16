@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['paraglider']
+
+roboflow:
+  workspace: smartcamera-fv1bc
+  project: identify-objects-qfzls
+  version: 3
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/smartcamera-fv1bc/identify-objects-qfzls/dataset/3

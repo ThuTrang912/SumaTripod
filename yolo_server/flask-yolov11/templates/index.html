@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Object Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>YOLO Object Detection</h1>
+    <div class="container">
+        <form id="upload-form" method="POST" enctype="multipart/form-data">
+            <label for="image">Upload an image:</label>
+            <input type="file" id="image" name="file" accept="image/*" required>
+            <button type="submit">Submit</button>
+        </form>
+        <div class="results">
+            <h3>Detection Results:</h3>
+            <p id="output"></p>
+            <img id="uploaded-img" src="" alt="">
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById('upload-form');
+        const output = document.getElementById('output');
+        const uploadedImg = document.getElementById('uploaded-img');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    output.innerHTML = JSON.stringify(result, null, 2);
+                    const file = formData.get('file');
+                    const reader = new FileReader();
+
+                    reader.onload = (e) => {
+                        uploadedImg.src = e.target.result;
+                    };
+
+                    reader.readAsDataURL(file);
+                } else {
+                    output.textContent = `Error: ${result.error}`;
+                }
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
