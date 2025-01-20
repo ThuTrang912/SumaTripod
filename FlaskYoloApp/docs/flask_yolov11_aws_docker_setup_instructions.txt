@@ -1,0 +1,208 @@
+Hướng Dẫn Cài Đặt EC2 cho Ứng Dụng YOLOv11
+    
+
+
+    Bước 1: Tạo EC2 Instance
+
+        Đăng nhập vào AWS Management Console:
+
+            Truy cập vào AWS Management Console và đăng nhập bằng tài khoản AWS của bạn.
+            Chọn EC2 từ dịch vụ:
+
+            Tìm kiếm hoặc chọn EC2 trong danh sách dịch vụ để vào trang quản lý EC2.
+            Nhấn "Launch Instance":
+
+            Đây là bước bắt đầu để tạo một instance mới. Nhấn nút này để bắt đầu quá trình cấu hình.
+
+        Chọn Amazon Machine Image (AMI):
+
+            AMI là mẫu hệ điều hành và phần mềm mà bạn sẽ sử dụng trên instance.
+            Chọn Ubuntu Server 20.04 LTS hoặc Amazon Linux 2: Đây là các hệ điều hành phổ biến cho ứng dụng Python và Docker.
+        
+        Chọn Instance Type:
+
+            Chọn t2.large: Đây là loại instance với 2 vCPU và 8 GB RAM, phù hợp cho các ứng dụng máy học và web.
+        
+        Cấu hình Instance:
+
+            Nhấn "Next" để giữ cấu hình mặc định. Bạn có thể tùy chỉnh sau nếu cần, nhưng cấu hình mặc định thường đủ cho hầu hết các ứng dụng nhỏ.
+        
+        Thêm Storage:
+
+        Root Volume: Tại phần này, bạn có thể nhập kích thước ổ đĩa.
+        
+        Khuyến nghị: Nhập từ 20 GB đến 50 GB để đảm bảo đủ không gian cho hệ điều hành, thư viện và dữ liệu.
+        
+        Thêm Tags (tùy chọn):
+
+            Tags giúp bạn quản lý các instance dễ dàng hơn. Bạn có thể thêm tag như Name: YOLOv11-Instance.
+        
+        Cấu hình Security Group:
+
+            Security Group là tường lửa cho instance của bạn.
+            Mở cổng 22 (SSH): Để kết nối vào instance từ máy tính của bạn.
+            Mở cổng 5000 (cho Flask): Để ứng dụng Flask có thể nhận yêu cầu từ bên ngoài.
+        
+        Review and Launch:
+
+            Nhấn "Launch", chọn key pair (hoặc tạo mới) để bảo mật kết nối SSH và nhấn "Launch Instances".
+   
+   
+   
+    Bước 2: Kết nối vào EC2 Instance
+        Mở terminal hoặc Command Prompt:
+
+            Trên máy tính của bạn, mở terminal (Linux/Mac) hoặc Command Prompt (Windows).
+        
+        Kết nối vào instance bằng SSH:
+
+        Sử dụng lệnh sau để kết nối vào instance:
+            
+            Sao chép
+            ssh -i "your-key-pair.pem" ubuntu@your-ec2-public-dns
+            
+                Thay thế your-key-pair.pem bằng tên file key pair của bạn và your-ec2-public-dns bằng địa chỉ DNS công khai của instance.
+        
+    
+    
+    Bước 3: Cài đặt Docker
+        Cập nhật hệ thống:
+
+            Sao chép
+            sudo apt update
+            sudo apt upgrade -y
+            
+                Cập nhật danh sách gói và nâng cấp các gói hiện có để đảm bảo hệ thống của bạn luôn mới nhất.
+        
+        Cài đặt Docker:
+
+            Sao chép
+            sudo apt install docker.io -y
+            
+                Cài đặt Docker, một công cụ giúp bạn tạo và quản lý containers.
+        
+        Khởi động và bật Docker:
+
+            Sao chép
+            sudo systemctl start docker
+            sudo systemctl enable docker
+                
+                Khởi động dịch vụ Docker và cấu hình để tự động khởi động cùng hệ thống.
+        
+        
+        Thêm người dùng vào nhóm Docker:
+
+            Sao chép
+            sudo usermod -aG docker $USER
+        
+                Thao tác này cho phép bạn chạy các lệnh Docker mà không cần sử dụng sudo. Đăng xuất và đăng nhập lại để thay đổi có hiệu lực.
+    
+    
+    
+    Bước 4: Tạo Dockerfile và requirements.txt
+        
+        Tạo thư mục cho ứng dụng:
+
+            Sao chép
+            mkdir yolov11_app
+            cd yolov11_app
+                
+                Tạo một thư mục mới để chứa mã nguồn và cấu hình ứng dụng của bạn.
+        
+        Tạo file Dockerfile:
+
+            Sao chép
+            # Dockerfile
+            FROM python:3.8-slim
+
+            # Cài đặt các thư viện cần thiết
+            RUN apt-get update && apt-get install -y \
+                libgl1-mesa-glx \
+                && rm -rf /var/lib/apt/lists/*
+
+            # Thiết lập thư mục làm việc
+            WORKDIR /app
+
+            # Sao chép file requirements.txt
+            COPY requirements.txt .
+
+            # Cài đặt các thư viện Python
+            RUN pip install --no-cache-dir -r requirements.txt
+
+            # Sao chép mã nguồn ứng dụng
+            COPY . .
+
+            # Thiết lập lệnh chạy ứng dụng
+            CMD ["python", "app.py"]
+        
+                Giải thích:
+                    FROM python:3.8-slim: Sử dụng image Python 3.8 nhẹ để giảm dung lượng.
+                    RUN apt-get update...: Cài đặt thư viện cần thiết cho OpenCV.
+                    WORKDIR /app: Thiết lập thư mục làm việc cho container.
+                    COPY requirements.txt .: Sao chép file requirements.txt vào container.
+                    RUN pip install...: Cài đặt các thư viện Python từ file requirements.
+                    CMD ["python", "app.py"]: Thiết lập lệnh chạy ứng dụng Flask.
+        
+        Tạo file requirements.txt:
+
+            Sao chép
+            flask
+            opencv-python
+            numpy
+            torch
+            torchvision
+            # thêm các thư viện khác nếu cần
+            Danh sách các thư viện cần thiết cho ứng dụng của bạn.
+        
+        
+        Tạo file app.py (đây là file Flask của bạn):
+
+            Sao chép
+            from flask import Flask, request, jsonify
+            import torch
+
+            app = Flask(__name__)
+
+            # Tải mô hình YOLOv11
+            model = torch.hub.load('ultralytics/yolov5', 'yolov5s')
+
+            @app.route('/predict', methods=['POST'])
+            def predict():
+                # Thêm mã xử lý dự đoán ở đây
+                return jsonify({"message": "Prediction result"})
+
+            if __name__ == '__main__':
+                app.run(host='0.0.0.0', port=5000)
+                
+                Giải thích:
+                Tạo một ứng dụng Flask đơn giản.
+                Tải mô hình YOLOv11 từ PyTorch Hub.
+                Thiết lập endpoint /predict để nhận yêu cầu dự đoán.
+   
+   
+   
+    Bước 5: Xây dựng và chạy Docker container
+        
+        Xây dựng Docker image:
+
+            Sao chép
+            docker build -t yolov11_image .
+                
+                Xây dựng image Docker từ Dockerfile trong thư mục hiện tại.
+        
+        Chạy Docker container:
+
+            Sao chép
+            docker run -d --rm --name yolov11_container -p 5000:5000 yolov11_image
+                Chạy container từ image vừa xây dựng và ánh xạ cổng 5000 của container với cổng 5000 của EC2.
+    
+    
+    
+    Bước 6: Kiểm tra ứng dụng
+        
+        Mở trình duyệt hoặc sử dụng curl để gửi yêu cầu đến endpoint:
+            Sao chép
+            curl -X POST http://your-ec2-public-dns:5000/predict
+                
+                Thay thế your-ec2-public-dns bằng địa chỉ DNS công khai của instance.
+                Gửi yêu cầu POST đến ứng dụng Flask để kiểm tra xem nó có hoạt động hay không.
