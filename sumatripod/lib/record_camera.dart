@@ -50,6 +50,8 @@ class _RecordCameraState extends State<RecordCamera>
   bool _isPaused = true; // Start in a paused state
   bool _isFlashOn = false; // Initialize flash state
   Timer? _timer;
+  Timer? _captureTimer;
+  Timer? _durationTimer;
   Duration _recordingDuration = Duration.zero;
   List<Map<String, dynamic>> _detections = [];
   List<String> _videoSegments = [];
@@ -218,8 +220,13 @@ class _RecordCameraState extends State<RecordCamera>
       // Immediately pause the recording
       _pauseRecording();
 
-      _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      // Timer to capture frames every 100 milliseconds
+      _captureTimer = Timer.periodic(Duration(milliseconds: 100), (timer) {
         _captureFrame();
+      });
+
+      // Timer to update recording duration every second
+      _durationTimer = Timer.periodic(Duration(seconds: 1), (timer) {
         if (!_isPaused) {
           setState(() {
             _recordingDuration =
@@ -264,6 +271,11 @@ class _RecordCameraState extends State<RecordCamera>
 
       // Save video segments directly without merging
       await saveVideoToStorage(video.path);
+
+      // Send stop command to ESP32
+      final bluetoothManager =
+          Provider.of<BluetoothConnectionManager>(context, listen: false);
+      bluetoothManager.sendGimbalCommand('STOP\n');
     } catch (e) {
       print("Error stopping video recording: $e");
     }
@@ -331,25 +343,44 @@ class _RecordCameraState extends State<RecordCamera>
         double centerX = MediaQuery.of(context).size.width / 2;
         double centerY = MediaQuery.of(context).size.height / 2;
         double appBarHeight = AppBar().preferredSize.height;
-        double objectCenterX =
-            closestConfidenceObject['x'] + closestConfidenceObject['width'] / 2;
-        double objectCenterY = closestConfidenceObject['y'] +
-            closestConfidenceObject['height'] / 2 -
+
+        // double objectCenterX =
+        //     closestConfidenceObject['x'] + closestConfidenceObject['width'] / 2;
+        // double objectCenterY = closestConfidenceObject['y'] +
+        //     closestConfidenceObject['height'] / 2 -
+        //     appBarHeight;
+        double objectCenterX = closestConfidenceObject['x'] +
+            closestConfidenceObject['width'] / 2 -
             appBarHeight;
+        double objectCenterY = closestConfidenceObject['y'] +
+            closestConfidenceObject['height'] / 2;
         double offsetX = objectCenterX - centerX;
         double offsetY = objectCenterY - centerY;
 
+        print('centerX: $centerX, centerY: $centerY');
+        print('objectCenterX: $objectCenterX, objectCenterY: $objectCenterY');
+        print('offsetX: $offsetX, offsetY: $offsetY');
+
         // Convert offset to angles
         double angleX = offsetX / MediaQuery.of(context).size.width * 360;
-        double angleY = offsetY / MediaQuery.of(context).size.height * 60;
+        double angleY = offsetY / MediaQuery.of(context).size.height * 360;
 
-        // Limit angleY to the range [60, 120]
-        angleY = angleY.clamp(60, 120);
+        print('angleX: $angleX, angleY: $angleY');
+
+        // Calculate speed based on the offset
+        // double speedX =
+        //     (offsetX.abs() / MediaQuery.of(context).size.width) * 1023;
+        // double speedY =
+        //     (offsetY.abs() / MediaQuery.of(context).size.height) * 1023;
+
+        double speedX = 1023;
+        double speedY = 1023;
 
         // Send commands to ESP32 to adjust the gimbal
         final bluetoothManager =
             Provider.of<BluetoothConnectionManager>(context, listen: false);
-        bluetoothManager.sendGimbalCommand('X:$angleX,Y:$angleY\n');
+        bluetoothManager
+            .sendGimbalCommand('X:$angleX,Y:$angleY,SX:$speedX,SY:$speedY\n');
       } else {
         _specifiedObjectDetected = false;
 
@@ -357,6 +388,11 @@ class _RecordCameraState extends State<RecordCamera>
         if (!_isPaused) {
           _pauseRecording();
         }
+
+        // Send stop command to ESP32
+        final bluetoothManager =
+            Provider.of<BluetoothConnectionManager>(context, listen: false);
+        bluetoothManager.sendGimbalCommand('STOP\n');
       }
     } catch (e) {
       print("Error capturing frame: $e");
@@ -370,6 +406,11 @@ class _RecordCameraState extends State<RecordCamera>
     XFile video = await _controller.stopVideoRecording();
     _videoSegments.add(video.path);
     print('Video recording paused');
+
+    // Send stop command to ESP32
+    final bluetoothManager =
+        Provider.of<BluetoothConnectionManager>(context, listen: false);
+    bluetoothManager.sendGimbalCommand('STOP\n');
   }
 
   void _resumeRecording() async {

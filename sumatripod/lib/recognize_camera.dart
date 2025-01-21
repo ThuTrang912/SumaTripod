@@ -64,12 +64,15 @@ class _RecognizeCameraState extends State<RecognizeCamera> {
   }
 
   Future<void> _requestStoragePermission() async {
-    var status = await Permission.storage.status;
-    if (!status.isGranted) {
-      var result = await Permission.storage.request();
-      if (!result.isGranted) {
+    if (Platform.isAndroid &&
+        await Permission.manageExternalStorage.isGranted) {
+      print('Manage external storage permission granted');
+    } else {
+      var status = await Permission.storage.request();
+      if (status.isGranted) {
+        print('Storage permission granted');
+      } else {
         print('Storage permission denied');
-        return;
       }
     }
   }

@@ -85,6 +85,10 @@ class _VideoAlbumState extends State<VideoAlbum> with WidgetsBindingObserver {
           .where((item) => item.path.endsWith(".mp4"))
           .map((item) => File(item.path))
           .toList();
+
+      // Sort videos by last modified time in descending order
+      _videos
+          .sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
     });
 
     print('Videos found: ${_videos.length}');

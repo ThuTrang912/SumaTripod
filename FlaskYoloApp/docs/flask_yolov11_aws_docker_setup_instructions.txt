@@ -206,3 +206,38 @@ Hướng Dẫn Cài Đặt EC2 cho Ứng Dụng YOLOv11
                 
                 Thay thế your-ec2-public-dns bằng địa chỉ DNS công khai của instance.
                 Gửi yêu cầu POST đến ứng dụng Flask để kiểm tra xem nó có hoạt động hay không.
+
+
+
+
+
+
+---------->>>>>Khi bạn dừng (stop) một EC2 instance, tất cả các dịch vụ và ứng dụng đang chạy trên instance đó, bao gồm cả Docker containers, sẽ dừng lại. Khi bạn khởi động lại (start) instance, các containers đó sẽ không tự động khởi động lại.
+
+    Cách Giải Quyết
+        Để đảm bảo rằng Docker containers của bạn tự động khởi động lại khi instance được khởi động lại, bạn có thể sử dụng một trong các phương pháp sau:
+
+        1. Sử dụng --restart Flag
+            Khi bạn chạy Docker container, bạn có thể sử dụng tùy chọn --restart để chỉ định chính sách khởi động lại cho container. Ví dụ:
+
+            Sao chép
+            docker run -d --rm --name yolov11_container --restart unless-stopped -p 5000:5000 yolov11_image
+            
+            Giải thích:
+                --restart unless-stopped: Container sẽ tự động khởi động lại trừ khi nó bị dừng bằng tay.
+        
+        2. Sử dụng Docker Compose
+            Nếu bạn đang sử dụng Docker Compose, bạn có thể thêm thuộc tính restart vào file docker-compose.yml:
+
+            Sao chép
+            version: '3'
+            services:
+            yolov11:
+                image: yolov11_image
+                ports:
+                - "5000:5000"
+                restart: unless-stopped
+        
+        3. Scripting
+            Bạn cũng có thể viết một script để tự động khởi động lại các container sau khi instance khởi động. Bạn có thể thêm script này vào file khởi động của hệ thống (như /etc/rc.local hoặc sử dụng systemd).
+

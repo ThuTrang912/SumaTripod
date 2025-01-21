@@ -131,38 +131,24 @@ void swOperation(void) {
   bSwDataSave = bSwData;
 }
 
-void motorOp(int v, int dir, int duration) {
-  digitalWrite(LED, HIGH);
-  if(v == 1) {
-    Serial.print("垂直");
-    if(dir == 1) {
-      Serial.println("反転");
-      digitalWrite(MT_V_A, LOW);
-      digitalWrite(MT_V_B, HIGH);
-    } else {
-      Serial.println("正転");
-      digitalWrite(MT_V_A, HIGH);
-      digitalWrite(MT_V_B, LOW);
-    }
-  } else if(v == 0) {
-    Serial.print("水平");
-    if(dir == 1) {
-      Serial.println("正転");
-      digitalWrite(MT_H_A, HIGH);
-      digitalWrite(MT_H_B, LOW);
-    } else {
-      Serial.println("反転");
-      digitalWrite(MT_H_A, LOW);
-      digitalWrite(MT_H_B, HIGH);
-    }
+void motorOp(int pwmValueX, int dirX, int pwmValueY, int dirY) {
+  // Horizontal motor control
+  if (dirX == 1) {
+    analogWrite(MT_H_A, pwmValueX);
+    analogWrite(MT_H_B, 0);
+  } else {
+    analogWrite(MT_H_A, 0);
+    analogWrite(MT_H_B, pwmValueX);
   }
-  delay(duration);
-  digitalWrite(LED, LOW);
-  Serial.println("停止");
-  digitalWrite(MT_H_A, LOW);
-  digitalWrite(MT_H_B, LOW);
-  digitalWrite(MT_V_A, LOW);
-  digitalWrite(MT_V_B, LOW);
+
+  // Vertical motor control
+  if (dirY == 1) {
+    analogWrite(MT_V_A, 0);
+    analogWrite(MT_V_B, pwmValueY);
+  } else {
+    analogWrite(MT_V_A, pwmValueY);
+    analogWrite(MT_V_B, 0);
+  }
 }
 
 void setup() {
@@ -199,29 +185,30 @@ void loop() {
     String rcvData = SerialBT.readStringUntil('\n');
     Serial.println("Received: " + rcvData);
 
+    if (rcvData.startsWith("STOP")) {
+      // Stop the motors
+      motorOp(0, 0, 0, 0);
+      return;
+    }
+
     // Parse the received command
-    float angleX, angleY;
-    sscanf(rcvData.c_str(), "X:%f,Y:%f", &angleX, &angleY);
+    float angleX, angleY, speedX, speedY;
+    sscanf(rcvData.c_str(), "X:%f,Y:%f,SX:%f,SY:%f", &angleX, &angleY, &speedX, &speedY);
 
     // Convert angles to motor control signals
-    int durationX = map(abs(angleX), 0, 360, 0, 1000);
-    int durationY = map(abs(angleY), 0, 360, 0, 1000);
+    int pwmValueX = map(abs(angleX), 0, 360, 0, speedX); // Adjust the range based on speed
+    int pwmValueY = map(abs(angleY), 0, 360, 0, speedY); // Adjust the range based on speed
 
-    if (angleX > 0) {
-      motorOp(0, 1, durationX); //水平、 正転、時間
-    } else {
-      motorOp(0, 0, durationX); //水平、 逆転、時間
-    }
+    // Determine direction
+    int dirX = (angleX > 0) ? 1 : 0;
+    int dirY = (angleY > 0) ? 1 : 0;
 
-    if (angleY > 0) {
-      motorOp(1, 1, durationY); //垂直、 正転、時間
-    } else {
-      motorOp(1, 0, durationY); //垂直、 逆転、時間
-    }
+    // Move both motors simultaneously
+    motorOp(pwmValueX, dirX, pwmValueY, dirY);
   }
 
   swScan();
   swOperation();
   cnt++;
-  delay(10);
+  delay(5); // Reduce the delay for faster response
 }
