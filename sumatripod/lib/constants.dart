@@ -1,3 +1,3 @@
 class Constants {
-  static const String yoloServerUrl = 'http://172.16.10.46:5000';
+  static const String yoloServerUrl = 'http://10.28.10.57:5000';
 }
