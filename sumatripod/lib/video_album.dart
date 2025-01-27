@@ -173,6 +173,17 @@ class _VideoAlbumState extends State<VideoAlbum> with WidgetsBindingObserver {
     );
   }
 
+  void _showVideoPlayer(File video) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 1.0,
+        child: VideoPlayerScreen(videoFile: video),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -233,14 +244,7 @@ class _VideoAlbumState extends State<VideoAlbum> with WidgetsBindingObserver {
                     ],
                   ),
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => VideoPlayerScreen(
-                          videoFile: _videos[index],
-                        ),
-                      ),
-                    );
+                    _showVideoPlayer(_videos[index]);
                   },
                 );
               },
@@ -279,49 +283,53 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Video Player'),
-        backgroundColor: Color(0xFFFFA726),
-      ),
-      body: Center(
-        child: _controller.value.isInitialized
-            ? Column(
-                children: [
-                  AspectRatio(
-                    aspectRatio: _controller.value.aspectRatio,
-                    child: VideoPlayer(_controller),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      'Date: ${DateFormat('yyyy-MM-dd').format(File(widget.videoFile.path).lastModifiedSync())}',
-                      style: TextStyle(color: Colors.black, fontSize: 16),
+    return FractionallySizedBox(
+      heightFactor: 1.0,
+      widthFactor: 1.0,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Video Player'),
+          backgroundColor: Color(0xFFFFA726),
+        ),
+        body: Center(
+          child: _controller.value.isInitialized
+              ? Column(
+                  children: [
+                    AspectRatio(
+                      aspectRatio: _controller.value.aspectRatio,
+                      child: VideoPlayer(_controller),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      'Start Time: ${DateFormat('HH:mm:ss').format(File(widget.videoFile.path).lastModifiedSync())}',
-                      style: TextStyle(color: Colors.black, fontSize: 16),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        'Date: ${DateFormat('yyyy-MM-dd').format(File(widget.videoFile.path).lastModifiedSync())}',
+                        style: TextStyle(color: Colors.black, fontSize: 16),
+                      ),
                     ),
-                  ),
-                ],
-              )
-            : CircularProgressIndicator(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            _controller.value.isPlaying
-                ? _controller.pause()
-                : _controller.play();
-          });
-        },
-        backgroundColor: Colors.orange, // Set the background color to orange
-        child: Icon(
-          _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
-          color: Colors.black, // Set the icon color to white
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        'Start Time: ${DateFormat('HH:mm:ss').format(File(widget.videoFile.path).lastModifiedSync())}',
+                        style: TextStyle(color: Colors.black, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                )
+              : CircularProgressIndicator(),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            setState(() {
+              _controller.value.isPlaying
+                  ? _controller.pause()
+                  : _controller.play();
+            });
+          },
+          backgroundColor: Colors.orange, // Set the background color to orange
+          child: Icon(
+            _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+            color: Colors.black, // Set the icon color to white
+          ),
         ),
       ),
     );

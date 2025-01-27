@@ -223,14 +223,15 @@ class _RecognizeCameraState extends State<RecognizeCamera> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    InkWell(
-                      onTap: () {
-                        Navigator.push(
+                    GestureDetector(
+                      onTap: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => VideoAlbum(refresh: true),
                           ),
                         );
+                        // No need to reinitialize camera or reset detection state
                       },
                       child: Container(
                         width: 40,

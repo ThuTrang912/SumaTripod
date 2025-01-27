@@ -649,15 +649,19 @@ class _RecordCameraState extends State<RecordCamera>
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     GestureDetector(
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => VideoAlbum(
-                              refresh: true,
-                            ),
+                            builder: (context) => VideoAlbum(refresh: true),
                           ),
                         );
+                        // Reinitialize camera and reset detection state after returning from album
+                        _initializeCamera(_currentCamera);
+                        setState(() {
+                          _detections = [];
+                          _specifiedObjectDetected = false;
+                        });
                       },
                       child: Container(
                         width: 40,

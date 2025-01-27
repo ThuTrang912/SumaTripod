@@ -110,20 +110,21 @@ class GetStartedScreen extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.all(30.0),
                       child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => VideoAlbum(refresh: true),
                             ),
                           );
+                          // No need to reinitialize camera or reset detection state
                         },
                         child: Container(
-                          width: 60,
-                          height: 60,
+                          width: 40,
+                          height: 40,
                           decoration: BoxDecoration(
                             shape: BoxShape.rectangle,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(5),
                             image: DecorationImage(
                               image: AssetImage('assets/gallery.png'),
                               fit: BoxFit.cover,
