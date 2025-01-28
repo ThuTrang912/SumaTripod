@@ -106,13 +106,16 @@ class _VideoAlbumState extends State<VideoAlbum> with WidgetsBindingObserver {
     final thumbnailFile = File('$thumbnailPath/${videoPath.hashCode}.jpg');
 
     if (!await thumbnailFile.exists()) {
-      await VideoThumbnail.thumbnailFile(
+      final thumbnail = await VideoThumbnail.thumbnailFile(
         video: videoPath,
         thumbnailPath: thumbnailPath,
         imageFormat: ImageFormat.JPEG,
         maxHeight: 100,
         quality: 75,
       );
+      if (thumbnail != null) {
+        return thumbnail;
+      }
     }
 
     return thumbnailFile.path;
@@ -130,15 +133,25 @@ class _VideoAlbumState extends State<VideoAlbum> with WidgetsBindingObserver {
   }
 
   Future<void> _renameVideo(File video) async {
-    final newName = await _showRenameDialog(video);
-    if (newName != null && newName.isNotEmpty) {
-      final newPath = video.parent.path + '/' + newName + '.mp4';
-      await video.rename(newPath);
-      setState(() {
-        _loadVideos();
-      });
-      print('Video renamed to: $newPath');
-    }
+    String? newName;
+    do {
+      newName = await _showRenameDialog(video);
+      if (newName != null && newName.isNotEmpty) {
+        final newPath = video.parent.path + '/' + newName + '.mp4';
+        if (await File(newPath).exists()) {
+          // Show error if the new name already exists
+          await _showErrorDialog(
+              'A video with this name already exists. Please choose a different name.');
+        } else {
+          await video.rename(newPath);
+          setState(() {
+            _loadVideos();
+          });
+          print('Video renamed to: $newPath');
+          break;
+        }
+      }
+    } while (newName != null && newName.isNotEmpty);
   }
 
   Future<String?> _showRenameDialog(File video) async {
@@ -173,14 +186,23 @@ class _VideoAlbumState extends State<VideoAlbum> with WidgetsBindingObserver {
     );
   }
 
-  void _showVideoPlayer(File video) {
-    showModalBottomSheet(
+  Future<void> _showErrorDialog(String message) async {
+    return showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (context) => FractionallySizedBox(
-        heightFactor: 1.0,
-        child: VideoPlayerScreen(videoFile: video),
-      ),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Error'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -205,7 +227,8 @@ class _VideoAlbumState extends State<VideoAlbum> with WidgetsBindingObserver {
               itemCount: _videos.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  leading: _thumbnails.containsKey(_videos[index].path)
+                  leading: _thumbnails.containsKey(_videos[index].path) &&
+                          _thumbnails[_videos[index].path]!.isNotEmpty
                       ? Image.file(
                           File(_thumbnails[_videos[index].path]!),
                           width: 100,
@@ -244,7 +267,14 @@ class _VideoAlbumState extends State<VideoAlbum> with WidgetsBindingObserver {
                     ],
                   ),
                   onTap: () {
-                    _showVideoPlayer(_videos[index]);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => VideoPlayerScreen(
+                          videoFile: _videos[index],
+                        ),
+                      ),
+                    );
                   },
                 );
               },
@@ -283,53 +313,49 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FractionallySizedBox(
-      heightFactor: 1.0,
-      widthFactor: 1.0,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('Video Player'),
-          backgroundColor: Color(0xFFFFA726),
-        ),
-        body: Center(
-          child: _controller.value.isInitialized
-              ? Column(
-                  children: [
-                    AspectRatio(
-                      aspectRatio: _controller.value.aspectRatio,
-                      child: VideoPlayer(_controller),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Video Player'),
+        backgroundColor: Color(0xFFFFA726),
+      ),
+      body: Center(
+        child: _controller.value.isInitialized
+            ? Column(
+                children: [
+                  AspectRatio(
+                    aspectRatio: _controller.value.aspectRatio,
+                    child: VideoPlayer(_controller),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      'Date: ${DateFormat('yyyy-MM-dd').format(File(widget.videoFile.path).lastModifiedSync())}',
+                      style: TextStyle(color: Colors.black, fontSize: 16),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        'Date: ${DateFormat('yyyy-MM-dd').format(File(widget.videoFile.path).lastModifiedSync())}',
-                        style: TextStyle(color: Colors.black, fontSize: 16),
-                      ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      'Start Time: ${DateFormat('HH:mm:ss').format(File(widget.videoFile.path).lastModifiedSync())}',
+                      style: TextStyle(color: Colors.black, fontSize: 16),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        'Start Time: ${DateFormat('HH:mm:ss').format(File(widget.videoFile.path).lastModifiedSync())}',
-                        style: TextStyle(color: Colors.black, fontSize: 16),
-                      ),
-                    ),
-                  ],
-                )
-              : CircularProgressIndicator(),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            setState(() {
-              _controller.value.isPlaying
-                  ? _controller.pause()
-                  : _controller.play();
-            });
-          },
-          backgroundColor: Colors.orange, // Set the background color to orange
-          child: Icon(
-            _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
-            color: Colors.black, // Set the icon color to white
-          ),
+                  ),
+                ],
+              )
+            : CircularProgressIndicator(),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          setState(() {
+            _controller.value.isPlaying
+                ? _controller.pause()
+                : _controller.play();
+          });
+        },
+        backgroundColor: Colors.orange, // Set the background color to orange
+        child: Icon(
+          _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+          color: Colors.black, // Set the icon color to white
         ),
       ),
     );
