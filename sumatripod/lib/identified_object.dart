@@ -240,6 +240,8 @@ class _IdentifiedObjectState extends State<IdentifiedObject> {
       context,
       MaterialPageRoute(
         builder: (context) => RecordCamera(
+          isLocationSearching:
+              false, // Add the required isLocationSearching parameter
           isFlashOn: false, // Add the required isFlashOn parameter
           camera: cameras[0],
           croppedImagePath: croppedImagePath, // Pass the cropped image path
@@ -316,6 +318,8 @@ class _IdentifiedObjectState extends State<IdentifiedObject> {
             croppedImagePath: croppedImagePath,
             detectedObject: _detections[0], // Pass the detected object
             isFlashOn: false, // Add the required isFlashOn parameter
+            isLocationSearching:
+                false, // Add the required isLocationSearching parameter
           ),
         ),
       );

@@ -196,7 +196,7 @@ class _RecognizeCameraState extends State<RecognizeCamera> {
         ],
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(40),
-          child: CustomFunctionBar(
+          child: CustomFunctionBarRecognize(
             onSwitchCamera: _switchCamera,
             onToggleFlash: _toggleFlash,
             isFlashOn: _isFlashOn,
@@ -308,13 +308,13 @@ class BottomBarPainter extends CustomPainter {
   }
 }
 
-class CustomFunctionBar extends StatelessWidget {
+class CustomFunctionBarRecognize extends StatelessWidget {
   final VoidCallback onSwitchCamera;
   final VoidCallback onToggleFlash;
   final bool isFlashOn;
   final List<String> identifiedObjects;
 
-  const CustomFunctionBar({
+  const CustomFunctionBarRecognize({
     required this.onSwitchCamera,
     required this.onToggleFlash,
     required this.isFlashOn,
@@ -334,14 +334,7 @@ class CustomFunctionBar extends StatelessWidget {
               IconButton(
                 icon: Icon(Icons.history, color: Colors.white),
                 onPressed: () {
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute(
-                  //     builder: (context) => IdentifiedObjectsHistory(
-                  //       identifiedObjects: identifiedObjects,
-                  //     ),
-                  //   ),
-                  // );
+                  // Add functionality for the history icon
                 },
               ),
               IconButton(

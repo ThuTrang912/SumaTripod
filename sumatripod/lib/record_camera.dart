@@ -25,6 +25,7 @@ class RecordCamera extends StatefulWidget {
   final String croppedImagePath;
   final Map<String, dynamic> detectedObject;
   final bool isFlashOn;
+  final bool isLocationSearching;
 
   const RecordCamera({
     super.key,
@@ -32,6 +33,7 @@ class RecordCamera extends StatefulWidget {
     required this.croppedImagePath,
     required this.detectedObject,
     required this.isFlashOn,
+    required this.isLocationSearching,
   });
 
   @override
@@ -49,6 +51,7 @@ class _RecordCameraState extends State<RecordCamera>
   bool _isRecording = false;
   bool _isPaused = true; // Start in a paused state
   bool _isFlashOn = false; // Initialize flash state
+  bool _isLocationSearching = false; // Mặc định là false (location disabled)
   Timer? _timer;
   Timer? _captureTimer;
   Timer? _durationTimer;
@@ -185,6 +188,25 @@ class _RecordCameraState extends State<RecordCamera>
     setState(() {
       _isFlashOn = !_isFlashOn;
     });
+  }
+
+  void _toggleLocationSearch() async {
+    if (_isLocationSearching) {
+      setState(() {
+        _isLocationSearching = false;
+      });
+    } else {
+      final bluetoothManager =
+          Provider.of<BluetoothConnectionManager>(context, listen: false);
+      bool isConnected = await bluetoothManager.isConnected();
+      if (isConnected) {
+        setState(() {
+          _isLocationSearching = true;
+        });
+      } else {
+        _showBluetoothDialog();
+      }
+    }
   }
 
   @override
@@ -509,13 +531,16 @@ class _RecordCameraState extends State<RecordCamera>
         ],
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(40),
-          child: CustomFunctionBar(
+          child: CustomFunctionBarRecord(
             onSwitchCamera: _switchCamera,
             onToggleFlash: _toggleFlash,
             isFlashOn: _isFlashOn, // Set the initial flash state here
             identifiedObjects: _detections
                 .map((detection) => detection['name'].toString())
                 .toList(), // Add this line
+            isLocationSearching: _isLocationSearching,
+            onToggleLocationSearch:
+                _toggleLocationSearch, // Pass the location searching state
           ),
         ),
       ),
@@ -708,6 +733,61 @@ class _RecordCameraState extends State<RecordCamera>
                 onPressed: _toggleRecordVideo,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CustomFunctionBarRecord extends StatelessWidget {
+  final VoidCallback onSwitchCamera;
+  final VoidCallback onToggleFlash;
+  final VoidCallback onToggleLocationSearch;
+  final bool isFlashOn;
+  final List<String> identifiedObjects;
+  final bool isLocationSearching;
+
+  const CustomFunctionBarRecord({
+    required this.onSwitchCamera,
+    required this.onToggleFlash,
+    required this.isFlashOn,
+    required this.onToggleLocationSearch,
+    required this.isLocationSearching,
+    required this.identifiedObjects,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Color(0xFF333333),
+      child: Column(
+        children: [
+          SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                icon: Icon(
+                  isLocationSearching
+                      ? Icons.location_searching
+                      : Icons.location_disabled,
+                  color: Colors.white,
+                ),
+                onPressed: onToggleLocationSearch,
+              ),
+              IconButton(
+                icon: Icon(
+                  isFlashOn ? Icons.flash_on : Icons.flash_off,
+                  color: Colors.white,
+                ),
+                onPressed: onToggleFlash,
+              ),
+              IconButton(
+                icon: Icon(Icons.flip_camera_ios_outlined, color: Colors.white),
+                onPressed: onSwitchCamera,
+              ),
+            ],
           ),
         ],
       ),
