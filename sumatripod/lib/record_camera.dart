@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:gallery_saver/gallery_saver.dart';
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:image/image.dart' as img;
 
 import 'constants.dart';
 import 'identified_object.dart';
@@ -277,6 +278,9 @@ class _RecordCameraState extends State<RecordCamera>
       print('Video recording stopped: ${video.path}');
 
       _timer?.cancel();
+      _captureTimer?.cancel();
+      _durationTimer?.cancel();
+
       setState(() {
         _isRecording = false;
         _detections = []; // Clear detections when recording stops
@@ -312,6 +316,14 @@ class _RecordCameraState extends State<RecordCamera>
     try {
       final XFile file = await _controller.takePicture();
       final File imageFile = File(file.path);
+
+      // Flip the image if using the front camera
+      if (_currentCamera.lensDirection == CameraLensDirection.front) {
+        final bytes = await imageFile.readAsBytes();
+        img.Image originalImage = img.decodeImage(Uint8List.fromList(bytes))!;
+        img.Image flippedImage = img.flipHorizontal(originalImage);
+        await imageFile.writeAsBytes(img.encodeJpg(flippedImage));
+      }
 
       // Send the captured image to the Yolov11 server
       final response = await sendImageToYolov11Server(imageFile);
@@ -376,6 +388,7 @@ class _RecordCameraState extends State<RecordCamera>
             appBarHeight;
         double objectCenterY = closestConfidenceObject['y'] +
             closestConfidenceObject['height'] / 2;
+
         double offsetX = objectCenterX - centerX;
         double offsetY = objectCenterY - centerY;
 
@@ -496,6 +509,9 @@ class _RecordCameraState extends State<RecordCamera>
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () async {
+            if (_isRecording) {
+              _stopVideoRecording();
+            }
             final cameras = await availableCameras();
             final firstCamera = cameras.first;
             Navigator.push(
@@ -513,8 +529,11 @@ class _RecordCameraState extends State<RecordCamera>
         actions: [
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, color: Colors.white),
-            onSelected: (String result) {
+            onSelected: (String result) async {
               if (result == 'Settings') {
+                if (_isRecording) {
+                  _stopVideoRecording();
+                }
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => SettingsScreen()),
@@ -675,6 +694,9 @@ class _RecordCameraState extends State<RecordCamera>
                   children: [
                     GestureDetector(
                       onTap: () async {
+                        if (_isRecording) {
+                          _stopVideoRecording();
+                        }
                         await Navigator.push(
                           context,
                           MaterialPageRoute(

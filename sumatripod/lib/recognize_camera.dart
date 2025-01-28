@@ -3,6 +3,7 @@ import 'package:camera/camera.dart';
 import 'dart:io';
 import 'identified_object.dart';
 import 'dart:ui' show lerpDouble;
+import 'dart:typed_data';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import 'main.dart';
@@ -10,6 +11,7 @@ import 'video_album.dart';
 import 'record_camera.dart';
 import 'settings_screen.dart';
 import 'identified_objects_history.dart'; // Import the new screen
+import 'package:image/image.dart' as img;
 
 class RecognizeCamera extends StatefulWidget {
   final CameraDescription camera;
@@ -128,6 +130,17 @@ class _RecognizeCameraState extends State<RecognizeCamera> {
 
     try {
       final XFile picture = await _controller.takePicture();
+
+      final File imageFile = File(picture.path);
+
+      // Flip the image if using the front camera
+      if (_currentCamera.lensDirection == CameraLensDirection.front) {
+        final bytes = await imageFile.readAsBytes();
+        img.Image originalImage = img.decodeImage(Uint8List.fromList(bytes))!;
+        img.Image flippedImage = img.flipHorizontal(originalImage);
+        await imageFile.writeAsBytes(img.encodeJpg(flippedImage));
+      }
+
       _identifiedObjects.add(picture.path);
       Navigator.push(
         context,
@@ -248,7 +261,7 @@ class _RecognizeCameraState extends State<RecognizeCamera> {
                     ),
                     SizedBox(width: 40),
                     IconButton(
-                      icon: Icon(Icons.add_a_photo_outlined),
+                      icon: Icon(Icons.photo_library_outlined),
                       color: Colors.white,
                       onPressed: _pickImageFromGallery,
                     ),
