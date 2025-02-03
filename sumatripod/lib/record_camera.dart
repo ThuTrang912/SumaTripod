@@ -11,7 +11,7 @@ import 'package:gallery_saver/gallery_saver.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:image/image.dart' as img;
-
+import 'package:flutter/foundation.dart';
 import 'constants.dart';
 import 'identified_object.dart';
 import 'video_album.dart';
@@ -307,6 +307,15 @@ class _RecordCameraState extends State<RecordCamera>
     }
   }
 
+  Future<img.Image> _processImage(Uint8List bytes) async {
+    return compute(_decodeAndFlipImage, bytes);
+  }
+
+  img.Image _decodeAndFlipImage(Uint8List bytes) {
+    img.Image originalImage = img.decodeImage(Uint8List.fromList(bytes))!;
+    return img.flipHorizontal(originalImage);
+  }
+
   void _captureFrame() async {
     if (!_isCameraInitialized) {
       print('Camera not initialized yet');
@@ -320,8 +329,7 @@ class _RecordCameraState extends State<RecordCamera>
       // Flip the image if using the front camera
       if (_currentCamera.lensDirection == CameraLensDirection.front) {
         final bytes = await imageFile.readAsBytes();
-        img.Image originalImage = img.decodeImage(Uint8List.fromList(bytes))!;
-        img.Image flippedImage = img.flipHorizontal(originalImage);
+        img.Image flippedImage = await _processImage(bytes);
         await imageFile.writeAsBytes(img.encodeJpg(flippedImage));
       }
 
@@ -378,11 +386,6 @@ class _RecordCameraState extends State<RecordCamera>
         double centerY = MediaQuery.of(context).size.height / 2;
         double appBarHeight = AppBar().preferredSize.height;
 
-        // double objectCenterX =
-        //     closestConfidenceObject['x'] + closestConfidenceObject['width'] / 2;
-        // double objectCenterY = closestConfidenceObject['y'] +
-        //     closestConfidenceObject['height'] / 2 -
-        //     appBarHeight;
         double objectCenterX = closestConfidenceObject['x'] +
             closestConfidenceObject['width'] / 2 -
             appBarHeight;
@@ -403,19 +406,16 @@ class _RecordCameraState extends State<RecordCamera>
         print('angleX: $angleX, angleY: $angleY');
 
         // Calculate speed based on the offset
-        // double speedX =
-        //     (offsetX.abs() / MediaQuery.of(context).size.width) * 1023;
-        // double speedY =
-        //     (offsetY.abs() / MediaQuery.of(context).size.height) * 1023;
-
         double speedX = 1023;
         double speedY = 1023;
 
-        // Send commands to ESP32 to adjust the gimbal
-        final bluetoothManager =
-            Provider.of<BluetoothConnectionManager>(context, listen: false);
-        bluetoothManager
-            .sendGimbalCommand('X:$angleX,Y:$angleY,SX:$speedX,SY:$speedY\n');
+        // Send commands to ESP32 to adjust the gimbal only if location searching is enabled
+        if (_isLocationSearching) {
+          final bluetoothManager =
+              Provider.of<BluetoothConnectionManager>(context, listen: false);
+          bluetoothManager
+              .sendGimbalCommand('X:$angleX,Y:$angleY,SX:$speedX,SY:$speedY\n');
+        }
       } else {
         _specifiedObjectDetected = false;
 
@@ -424,10 +424,12 @@ class _RecordCameraState extends State<RecordCamera>
           _pauseRecording();
         }
 
-        // Send stop command to ESP32
-        final bluetoothManager =
-            Provider.of<BluetoothConnectionManager>(context, listen: false);
-        bluetoothManager.sendGimbalCommand('STOP\n');
+        // Send stop command to ESP32 only if location searching is enabled
+        if (_isLocationSearching) {
+          final bluetoothManager =
+              Provider.of<BluetoothConnectionManager>(context, listen: false);
+          bluetoothManager.sendGimbalCommand('STOP\n');
+        }
       }
     } catch (e) {
       print("Error capturing frame: $e");
